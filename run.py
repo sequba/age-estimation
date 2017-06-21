@@ -40,7 +40,7 @@ if __name__ == '__main__':
 			'should_save_logs': True,
 			'keep_prob': 0.8,
 			'reduction': 1.0,
-			'dataset': 'C10',
+			'dataset': 'IMDB',
 			'model_type': 'DenseNet',
 			'depth': 40,
 			'train': True,
