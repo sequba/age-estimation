@@ -2,11 +2,22 @@
 #import os
 #import pickle
 import random
-
+import math
+import bisect
 import numpy as np
-
+import h5py
 
 from .base_provider import ImagesDataSet, DataProvider
+
+age_endpoints = 6 * (np.logspace(0, np.log10(120/6+1), 17) - 1)
+age_endpoints[-1] = math.inf
+age_classes = zip(age_points[:-1], age_points[1:])
+
+def age2class(age):
+	return bisect.bisect_right(age_endpoints[:-1], age) - 1
+
+def encode(age, sex):
+	return age2class(age) * 2 + sex
 
 def augment_image(image, pad):
 	return image
@@ -134,14 +145,8 @@ class ImdbWikiDataProvider(DataProvider):
         """
 	self.one_hot = one_hot
 
-
-	size = 30
-    self._data_shape = (size, size, 3)
-	self._imgdir_path = '/pio/scratch/2/i258312/imdb_crop/01'
-	self._mat_path = '/pio/scratch/2/i258312/imdb_crop/imdb.mat'	
-
-
-	images, labels = self.read_data()
+	self._hdf_path = '/pio/scratch/2/i258312/faces30px.hdf5'
+	images, labels = self.read_data(self._hdf_path)
 	self.train, self.validation, self.test = self.split_data(images, labels)
     
 	@property
@@ -152,8 +157,17 @@ class ImdbWikiDataProvider(DataProvider):
     def n_classes(self):
         return self._n_classes
 
-	def read_data(self):
-		return images, labels
+	def read_data(self, hdf_path):
+		f = h5py.File(hdf_path, 'r')
+		img = f['img']
+		age = f['age']
+		sex = f['sex']
+		
+		labels = []
+		for (a,s) in zip(age, sex):
+			labels.append(encode(a, s))
+	
+		return img, np.array(labels)
 
 	def split_data(self, images, labels):
 		pass
