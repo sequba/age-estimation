@@ -2,56 +2,12 @@
 #import os
 #import pickle
 import random
-import math
 import bisect
 import numpy as np
 import h5py
 
 from .base_provider import ImagesDataSet, DataProvider
 
-age_endpoints = 6 * (np.logspace(0, np.log10(120/6+1), 17) - 1)
-age_endpoints[-1] = math.inf
-age_classes = zip(age_points[:-1], age_points[1:])
-
-def age2class(age):
-	return bisect.bisect_right(age_endpoints[:-1], age) - 1
-
-def encode(age, sex):
-	return age2class(age) * 2 + sex
-
-def augment_image(image, pad):
-	return image
-
-'''
-    """Perform zero padding, randomly crop image to original size,
-    maybe mirror horizontally"""
-    init_shape = image.shape
-    new_shape = [init_shape[0] + pad * 2,
-                 init_shape[1] + pad * 2,
-                 init_shape[2]]
-    zeros_padded = np.zeros(new_shape)
-    zeros_padded[pad:init_shape[0] + pad, pad:init_shape[1] + pad, :] = image
-    # randomly crop to original size
-    init_x = np.random.randint(0, pad * 2)
-    init_y = np.random.randint(0, pad * 2)
-    cropped = zeros_padded[
-        init_x: init_x + init_shape[0],
-        init_y: init_y + init_shape[1],
-        :]
-    flip = random.getrandbits(1)
-    if flip:
-        cropped = cropped[:, ::-1, :]
-    return cropped
-'''
-
-def augment_all_images(initial_images, pad):
-	return initial_images
-'''
-    new_images = np.zeros(initial_images.shape)
-    for i in range(initial_images.shape[0]):
-        new_images[i] = augment_image(initial_images[i], pad=4)
-    return new_images
-'''
 
 class ImdbWikiDataSet(ImagesDataSet):
 	def __init__(self, images, labels, n_classes, shuffle, normalization,
@@ -121,53 +77,98 @@ class ImdbWikiDataSet(ImagesDataSet):
 
 
 class ImdbWikiDataProvider(DataProvider):
-	def __init__(self, validation_set=None,
-                 validation_split=None, shuffle=None, normalization=None,
-                 one_hot=True, **kwargs):
-        """
-        Args:
-            validation_set: `bool`.
-            validation_split: `float` or None
-                float: chunk of `train set` will be marked as `validation set`.
-                None: if 'validation set' == True, `validation set` will be
-                    copy of `test set`
-            shuffle: `str` or None
-                None: no any shuffling
-                once_prior_train: shuffle train data only once prior train
-                every_epoch: shuffle train data prior every epoch
-            normalization: `str` or None
-                None: no any normalization
-                divide_255: divide all pixels by 255
-                divide_256: divide all pixels by 256
-                by_chanels: substract mean of every chanel and divide each
-                    chanel data by it's standart deviation
-            one_hot: `bool`, return lasels one hot encoded
-        """
-	self.one_hot = one_hot
+	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, **kwargs):
+		"""
+		Args:
+			validation_set: `bool`.
+			validation_split: `float` or None
+			shuffle: `str` or None
+				None: no any shuffling
+				once_prior_train: shuffle train data only once prior train
+				every_epoch: shuffle train data prior every epoch
+			normalization: `str` or None
+				None: no any normalization
+				divide_255: divide all pixels by 255
+				divide_256: divide all pixels by 256
+				by_chanels: substract mean of every chanel and divide each
+					chanel data by it's standart deviation
+		"""
+		self.one_hot = False 
+		self.normalization = normalization
+		self.shuffle = shuffle
+		self.data_augmentation = False
+		self.validation_split = validation_split
+		self.validation_set = validation_set
+		self.test_split = 0.2
 
-	self._hdf_path = '/pio/scratch/2/i258312/faces30px.hdf5'
-	images, labels = self.read_data(self._hdf_path)
-	self.train, self.validation, self.test = self.split_data(images, labels)
-    
+		self._age_endpoints = 6 * (np.logspace(0, np.log10(120/6+1), 17) - 1)
+		self._age_endpoints[-1] = float('inf')
+		self._age_classes = zip(self._age_endpoints[:-1], self._age_endpoints[1:])
+		self._n_classes = len(self._age_classes) * 2
+
+		self._hdf_path = '/pio/scratch/2/i258312/faces30px.hdf5'
+		images, labels = self.read_data(self._hdf_path)
+		self._data_shape = images[0].shape
+		self.split_data(images, labels)
+	
 	@property
-    def data_shape(self):
-        return self._data_shape
+	def data_shape(self):
+		return self._data_shape
 
-    @property
-    def n_classes(self):
-        return self._n_classes
+	@property
+	def n_classes(self):
+		return self._n_classes
+	
+	@property
+	def label_length(self):
+		return len(self._age_classes) + 1
 
 	def read_data(self, hdf_path):
 		f = h5py.File(hdf_path, 'r')
+		#img = np.array(f['img'], dtype=np.float32)
 		img = f['img']
 		age = f['age']
 		sex = f['sex']
 		
 		labels = []
 		for (a,s) in zip(age, sex):
-			labels.append(encode(a, s))
+			labels.append(self.encode_label(a, s))
 	
-		return img, np.array(labels)
+		return img, np.array(labels, dtype=np.float32)
 
 	def split_data(self, images, labels):
-		pass
+		test_split_idx = int(labels.shape[0] * (1.0 - self.test_split))
+
+		#(images, labels) = self.shuffle_images_and_labels(images, labels)
+		if self.validation_set and self.validation_split is not None:
+			valid_split_idx = int(test_split_idx * (1.0 - self.validation_split))
+			
+			self.validation = ImdbWikiDataSet(images=images[valid_split_idx:test_split_idx], labels=labels[valid_split_idx:test_split_idx], shuffle=self.shuffle, n_classes=self.n_classes, normalization=self.normalization, augmentation=self.data_augmentation)
+		else:
+			valid_split_idx = test_split_idx
+
+		self.train = ImdbWikiDataSet(images=images[:valid_split_idx], labels=labels[:valid_split_idx], shuffle=self.shuffle, n_classes=self.n_classes, normalization=self.normalization, augmentation=self.data_augmentation)
+
+		self.test = ImdbWikiDataSet(images=images[test_split_idx:], labels=labels[test_split_idx:], shuffle=None, n_classes=self.n_classes, normalization=self.normalization, augmentation=False)
+
+	def age2class(self, age):
+		return bisect.bisect_right(self._age_endpoints[:-1], age) - 1
+
+	def encode_label(self, age, sex):
+		code = [0.0] * self.label_length
+		
+		code[self.age2class(age) + 1] = 1.0		
+		if sex: code[0] = 1.0
+		return code
+
+	def decode_label(self, code):
+		sex = (code[0] > 0.5)
+		age_class = np.argmax(code[1:])
+		return (age_class, sex)
+
+	def shuffle_images_and_labels(self, images, labels):
+		rand_indexes = np.random.permutation(images.shape[0])
+		shuffled_images = images[rand_indexes]
+		shuffled_labels = labels[rand_indexes]
+		return shuffled_images, shuffled_labels
+
