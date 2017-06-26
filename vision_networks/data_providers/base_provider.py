@@ -52,13 +52,13 @@ class ImagesDataSet(DataSet):
 			normalization_type: `str`, available choices:
 				- divide_255
 				- divide_256
-				- by_chanels
+				- by_channels
 		"""
 		if normalization_type == 'divide_255':
 			images = images / 255
 		elif normalization_type == 'divide_256':
 			images = images / 256
-		elif normalization_type == 'by_chanels':
+		elif normalization_type == 'by_channels':
 			images = images.astype('float64')
 			# for every channel in image(assume this is last dimension)
 			for i in range(images.shape[-1]):
@@ -68,18 +68,18 @@ class ImagesDataSet(DataSet):
 			raise Exception("Unknown type of normalization")
 		return images
 
-	def normalize_all_images_by_chanels(self, initial_images):
+	def normalize_all_images_by_channels(self, initial_images):
 		new_images = np.zeros(initial_images.shape)
 		for i in range(initial_images.shape[0]):
-			new_images[i] = self.normalize_image_by_chanel(initial_images[i])
+			new_images[i] = self.normalize_image_by_channel(initial_images[i])
 		return new_images
 
-	def normalize_image_by_chanel(self, image):
+	def normalize_image_by_channel(self, image):
 		new_image = np.zeros(image.shape)
-		for chanel in range(3):
-			mean = np.mean(image[:, :, chanel])
-			std = np.std(image[:, :, chanel])
-			new_image[:, :, chanel] = (image[:, :, chanel] - mean) / std
+		for channel in range(3):
+			mean = np.mean(image[:, :, channel])
+			std = np.std(image[:, :, channel])
+			new_image[:, :, channel] = (image[:, :, channel] - mean) / std
 		return new_image
 
 

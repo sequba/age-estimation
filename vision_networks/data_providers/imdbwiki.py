@@ -25,8 +25,8 @@ class ImdbWikiDataSet(ImagesDataSet):
 				None: no any normalization
 				divide_255: divide all pixels by 255
 				divide_256: divide all pixels by 256
-				by_chanels: substract mean of every chanel and divide each
-					chanel data by it's standart deviation
+				by_channels: substract mean of every channel and divide each
+					channel data by it's standart deviation
 			augmentation: `bool`
 		"""
 		if shuffle is None:
@@ -90,10 +90,10 @@ class ImdbWikiDataProvider(DataProvider):
 				None: no any normalization
 				divide_255: divide all pixels by 255
 				divide_256: divide all pixels by 256
-				by_chanels: substract mean of every chanel and divide each
-					chanel data by it's standart deviation
+				by_channels: substract mean of every channel and divide each
+					channel data by it's standart deviation
 		"""
-		self.one_hot = False 
+		self.one_hot = True 
 		self.normalization = normalization
 		self.shuffle = shuffle
 		self.data_augmentation = False
@@ -121,18 +121,17 @@ class ImdbWikiDataProvider(DataProvider):
 	
 	@property
 	def label_length(self):
-		return len(self._age_classes) + 1
+		return self.n_classes
 
 	def read_data(self, hdf_path):
 		f = h5py.File(hdf_path, 'r')
 		#img = np.array(f['img'], dtype=np.float32)
-		img = f['img']
-		age = f['age']
-		sex = f['sex']
+		img = f['img']#[:100]
+		age = f['age']#[:100]
+		sex = f['sex']#[:100]
 		
-		labels = []
-		for (a,s) in zip(age, sex):
-			labels.append(self.encode_label(a, s))
+		labels = np.array([ self.encode_age_and_sex(a,s) for (a,s) in zip(age,sex)  ])
+		labels = self.labels_to_one_hot(labels)		
 	
 		return img, np.array(labels, dtype=np.float32)
 
@@ -154,16 +153,12 @@ class ImdbWikiDataProvider(DataProvider):
 	def age2class(self, age):
 		return bisect.bisect_right(self._age_endpoints[:-1], age) - 1
 
-	def encode_label(self, age, sex):
-		code = [0.0] * self.label_length
-		
-		code[self.age2class(age) + 1] = 1.0		
-		if sex: code[0] = 1.0
-		return code
+	def encode_age_and_sex(self, age, sex):
+		return self.age2class(age) * 2 + int(sex)		
 
 	def decode_label(self, code):
-		sex = (code[0] > 0.5)
-		age_class = np.argmax(code[1:])
+		sex = bool(code % 2)
+		age_class = int(code // 2)
 		return (age_class, sex)
 
 	def shuffle_images_and_labels(self, images, labels):

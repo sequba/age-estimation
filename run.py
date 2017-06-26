@@ -11,26 +11,27 @@ if __name__ == '__main__':
 			'reduction': 1.0,
 			'dataset': 'IMDB',
 			'model_type': 'DenseNet',
-			'depth': 40,
+			'depth': 40+(5*3),
+			#'depth': 40+(3*3),
 			'train': True,
 			'should_save_model': True,
 			'test': True,
-			'renew_logs': True,
+			'renew_logs': False,
 			'total_blocks': 3,
 			'nesterov_momentum': 0.9,
 			'growth_rate': 12
 	}
 	
 	train_params = {
-			'reduce_lr_epoch_1': 150,
-			'initial_learning_rate': 0.1,
-			'validation_split': None,
-			'normalization': 'by_chanels',
-			'reduce_lr_epoch_2': 225,
+			'reduce_lr_epoch_1': 20,
+			'initial_learning_rate': 0.5,
+			'validation_split': 0.2,
+			'normalization': 'divide_255',
+			'reduce_lr_epoch_2': 30,
 			'shuffle': 'every_epoch',
-			'validation_set': False,
+			'validation_set': True,
 			'batch_size': 64,
-			'n_epochs': 50,
+			'n_epochs': 40,
 	}
 
 	print("Params:")
