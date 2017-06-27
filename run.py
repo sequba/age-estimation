@@ -1,5 +1,6 @@
 from vision_networks.models.dense_net import DenseNet
-from vision_networks.data_providers.utils import get_data_provider_by_name
+from vision_networks.data_providers.imdbwiki import ImdbWikiDataProvider, ImdbWikiSexDataProvider
+#from vision_networks.data_providers.utils import get_data_provider_by_name
 
 
 if __name__ == '__main__':
@@ -11,8 +12,7 @@ if __name__ == '__main__':
 			'reduction': 1.0,
 			'dataset': 'IMDB',
 			'model_type': 'DenseNet',
-			'depth': 40+(5*3),
-			#'depth': 40+(3*3),
+			'depth': 7,
 			'train': True,
 			'should_save_model': True,
 			'test': True,
@@ -24,9 +24,9 @@ if __name__ == '__main__':
 	
 	train_params = {
 			'reduce_lr_epoch_1': 20,
-			'initial_learning_rate': 0.5,
+			'initial_learning_rate': 0.1,
 			'validation_split': 0.2,
-			'normalization': 'divide_255',
+			'normalization': 'by_channels',
 			'reduce_lr_epoch_2': 30,
 			'shuffle': 'every_epoch',
 			'validation_set': True,
@@ -42,7 +42,7 @@ if __name__ == '__main__':
 		print("\t%s: %s" % (k, v))
 
 	print("Prepare training data...")
-	data_provider = get_data_provider_by_name(model_params['dataset'], train_params)
+	data_provider = ImdbWikiDataProvider(**train_params)
 	print("Initialize the model..")
 	model = DenseNet(data_provider=data_provider, **model_params)
 	if model_params['train']:

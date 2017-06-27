@@ -76,6 +76,7 @@ class ImdbWikiDataSet(ImagesDataSet):
 			return images_slice, labels_slice
 
 
+
 class ImdbWikiDataProvider(DataProvider):
 	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, **kwargs):
 		"""
@@ -167,3 +168,59 @@ class ImdbWikiDataProvider(DataProvider):
 		shuffled_labels = labels[rand_indexes]
 		return shuffled_images, shuffled_labels
 
+
+class ImdbWikiSexDataProvider(ImdbWikiDataProvider):
+	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, **kwargs):
+		"""
+		Args:
+			validation_set: `bool`.
+			validation_split: `float` or None
+			shuffle: `str` or None
+				None: no any shuffling
+				once_prior_train: shuffle train data only once prior train
+				every_epoch: shuffle train data prior every epoch
+			normalization: `str` or None
+				None: no any normalization
+				divide_255: divide all pixels by 255
+				divide_256: divide all pixels by 256
+				by_channels: substract mean of every channel and divide each
+					channel data by it's standart deviation
+		"""
+		self.one_hot = True 
+		self.normalization = normalization
+		self.shuffle = shuffle
+		self.data_augmentation = False
+		self.validation_split = validation_split
+		self.validation_set = validation_set
+		self.test_split = 0.2
+
+		self._n_classes = 2
+
+		self._hdf_path = '/pio/scratch/2/i258312/faces30px.hdf5'
+		images, labels = self.read_data(self._hdf_path)
+		self._data_shape = images[0].shape
+		self.split_data(images, labels)
+	
+	@property
+	def data_shape(self):
+		return self._data_shape
+
+	@property
+	def n_classes(self):
+		return self._n_classes
+	
+	@property
+	def label_length(self):
+		return self.n_classes
+
+	def read_data(self, hdf_path):
+		f = h5py.File(hdf_path, 'r')
+		#img = np.array(f['img'], dtype=np.float32)
+		img = f['img']#[:100]
+		age = f['age']#[:100]
+		sex = f['sex']#[:100]
+		
+		sex = sex.astype(int)
+		labels = self.labels_to_one_hot(sex)		
+	
+		return img, np.array(sex, dtype=np.float32)
