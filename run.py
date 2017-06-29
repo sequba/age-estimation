@@ -1,5 +1,5 @@
 from vision_networks.models.dense_net import DenseNet
-from vision_networks.data_providers.imdbwiki import ImdbWikiDataProvider, ImdbWikiSexDataProvider
+from vision_networks.data_providers.imdbwiki import ImdbWikiAgeDataProvider, ImdbWikiSexDataProvider
 #from vision_networks.data_providers.utils import get_data_provider_by_name
 
 
@@ -16,22 +16,24 @@ if __name__ == '__main__':
 			'train': True,
 			'should_save_model': True,
 			'test': True,
-			'renew_logs': False,
+			'renew_logs': True,
 			'total_blocks': 3,
 			'nesterov_momentum': 0.9,
-			'growth_rate': 12
+			'growth_rate': 12,
+			'comment': 'sex-only-48-0.005'
 	}
 	
 	train_params = {
-			'reduce_lr_epoch_1': 20,
-			'initial_learning_rate': 0.1,
+			'reduce_lr_epoch_1': 25,
+			'initial_learning_rate': 0.005,
 			'validation_split': 0.2,
 			'normalization': 'by_channels',
-			'reduce_lr_epoch_2': 30,
-			'shuffle': 'every_epoch',
+			'reduce_lr_epoch_2': 35,
+			'shuffle': None,
 			'validation_set': True,
 			'batch_size': 64,
-			'n_epochs': 40,
+			'n_epochs': 50,
+			'img_size': '48',
 	}
 
 	print("Params:")
@@ -42,7 +44,7 @@ if __name__ == '__main__':
 		print("\t%s: %s" % (k, v))
 
 	print("Prepare training data...")
-	data_provider = ImdbWikiDataProvider(**train_params)
+	data_provider = ImdbWikiSexDataProvider(**train_params)
 	print("Initialize the model..")
 	model = DenseNet(data_provider=data_provider, **model_params)
 	if model_params['train']:

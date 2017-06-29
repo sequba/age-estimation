@@ -18,6 +18,7 @@ class DenseNet:
 				 renew_logs=False,
 				 reduction=1.0,
 				 bc_mode=False,
+				 comment='',
 				 **kwargs):
 		"""
 		Class to implement networks from this paper
@@ -44,6 +45,7 @@ class DenseNet:
 			bc_mode: `bool`, should we use bottleneck layers and features
 				reduction or not.
 		"""
+		self.comment = comment
 		self.data_provider = data_provider
 		self.data_shape = data_provider.data_shape
 		self.n_classes = data_provider.n_classes
@@ -152,8 +154,8 @@ class DenseNet:
 
 	@property
 	def model_identifier(self):
-		return "{}_growth_rate={}_depth={}_dataset_{}".format(
-			self.model_type, self.growth_rate, self.depth, self.dataset_name)
+		return "{}_growth_rate={}_depth={}_dataset_{}_{}".format(
+			self.model_type, self.growth_rate, self.depth, self.dataset_name, self.comment)
 
 	def save_model(self, global_step=None):
 		self.saver.save(self.sess, self.save_path, global_step=global_step)

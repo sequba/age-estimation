@@ -75,10 +75,8 @@ class ImdbWikiDataSet(ImagesDataSet):
 		else:
 			return images_slice, labels_slice
 
-
-
-class ImdbWikiDataProvider(DataProvider):
-	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, **kwargs):
+class ImdbWikiAgeSexDataProvider(DataProvider):
+	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, img_size='30', **kwargs):
 		"""
 		Args:
 			validation_set: `bool`.
@@ -107,7 +105,7 @@ class ImdbWikiDataProvider(DataProvider):
 		self._age_classes = zip(self._age_endpoints[:-1], self._age_endpoints[1:])
 		self._n_classes = len(self._age_classes) * 2
 
-		self._hdf_path = '/pio/scratch/2/i258312/faces30px.hdf5'
+		self._hdf_path = '/pio/scratch/2/i258312/faces'+img_size+'px.hdf5'
 		images, labels = self.read_data(self._hdf_path)
 		self._data_shape = images[0].shape
 		self.split_data(images, labels)
@@ -169,8 +167,72 @@ class ImdbWikiDataProvider(DataProvider):
 		return shuffled_images, shuffled_labels
 
 
-class ImdbWikiSexDataProvider(ImdbWikiDataProvider):
-	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, **kwargs):
+class ImdbWikiAgeDataProvider(ImdbWikiAgeSexDataProvider):
+	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, img_size='30', **kwargs):
+		"""
+		Args:
+			validation_set: `bool`.
+			validation_split: `float` or None
+			shuffle: `str` or None
+				None: no any shuffling
+				once_prior_train: shuffle train data only once prior train
+				every_epoch: shuffle train data prior every epoch
+			normalization: `str` or None
+				None: no any normalization
+				divide_255: divide all pixels by 255
+				divide_256: divide all pixels by 256
+				by_channels: substract mean of every channel and divide each
+					channel data by it's standart deviation
+		"""
+		self.one_hot = True 
+		self.normalization = normalization
+		self.shuffle = shuffle
+		self.data_augmentation = False
+		self.validation_split = validation_split
+		self.validation_set = validation_set
+		self.test_split = 0.2
+
+		self._age_endpoints = np.linspace(0, 120, 13)
+		self._age_endpoints[-1] = float('inf')
+		self._age_classes = zip(self._age_endpoints[:-1], self._age_endpoints[1:])
+		self._n_classes = len(self._age_classes)
+		
+
+		self._hdf_path = '/pio/scratch/2/i258312/faces'+img_size+'px.hdf5'
+		images, labels = self.read_data(self._hdf_path)
+		self._data_shape = images[0].shape
+		self.split_data(images, labels)
+	
+	@property
+	def data_shape(self):
+		return self._data_shape
+
+	@property
+	def n_classes(self):
+		return self._n_classes
+	
+	@property
+	def label_length(self):
+		return self.n_classes
+
+	def read_data(self, hdf_path):
+		f = h5py.File(hdf_path, 'r')
+		#img = np.array(f['img'], dtype=np.float32)
+		img = f['img']#[:250000]
+		age = f['age']#[:250000]
+		
+		labels = np.array([ self.age2class(a) for a in age ])
+		labels = self.labels_to_one_hot(labels)		
+		return img, np.array(labels, dtype=np.float32)
+
+	def age2class(self, age):
+		return bisect.bisect_right(self._age_endpoints[:-1], age) - 1
+
+	def decode_label(self, code):
+		raise Exception("Not implemented")
+
+class ImdbWikiSexDataProvider(ImdbWikiAgeSexDataProvider):
+	def __init__(self, validation_set=False, validation_split=0.2, shuffle=None, normalization=None, img_size='30', **kwargs):
 		"""
 		Args:
 			validation_set: `bool`.
@@ -196,7 +258,7 @@ class ImdbWikiSexDataProvider(ImdbWikiDataProvider):
 
 		self._n_classes = 2
 
-		self._hdf_path = '/pio/scratch/2/i258312/faces30px.hdf5'
+		self._hdf_path = '/pio/scratch/2/i258312/faces'+img_size+'px.hdf5'
 		images, labels = self.read_data(self._hdf_path)
 		self._data_shape = images[0].shape
 		self.split_data(images, labels)
@@ -216,11 +278,11 @@ class ImdbWikiSexDataProvider(ImdbWikiDataProvider):
 	def read_data(self, hdf_path):
 		f = h5py.File(hdf_path, 'r')
 		#img = np.array(f['img'], dtype=np.float32)
-		img = f['img']#[:100]
-		age = f['age']#[:100]
-		sex = f['sex']#[:100]
+		img = f['img'][:300000]
+		sex = f['sex'][:300000]
 		
-		sex = sex.astype(int)
+		sex = np.array(sex, dtype=np.int)
+
 		labels = self.labels_to_one_hot(sex)		
 	
-		return img, np.array(sex, dtype=np.float32)
+		return img, labels
